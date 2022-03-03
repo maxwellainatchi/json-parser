@@ -51,11 +51,11 @@ const ObjectDisplay: React.FC<{ value: JSONObject; shape: RecordShape }> = ({
   shape,
 }) => {
   return (
-    <div style={{ border: "1px solid lightgrey" }}>
+    <div style={{ border: "1px solid lightgrey", marginLeft: "30px" }}>
       {Object.entries(value).map(([key, value]) => {
         let field = shape.fields.get(key)!;
         return (
-          <div key={key} style={{ marginLeft: "30px" }}>
+          <div key={key}>
             <span>
               {key} <code>[{Shape.typeToName[field.type]}]</code>
             </span>
