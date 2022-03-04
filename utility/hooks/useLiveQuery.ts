@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLiveQuery as _useLiveQuery } from "dexie-react-hooks";
 
-const useLiveQuery = <T extends object>(
-  query: () => Promise<T>
+const useLiveQuery = <T extends object | undefined>(
+  query: () => T | Promise<T>,
+  deps?: any[]
 ): T | undefined => {
   let [isClient, setIsClient] = useState(false);
   useEffect(() => setIsClient(true), []);
@@ -10,7 +11,7 @@ const useLiveQuery = <T extends object>(
     if (isClient) {
       return query();
     }
-  }, [isClient]);
+  }, [isClient, ...(deps ?? [])]);
 };
 
 export default useLiveQuery;

@@ -2,7 +2,7 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import React from "react";
 import FileInput from "../components/FileInput";
-import { Button, Card, Container } from "@nextui-org/react";
+import { Button, Card, Container, Link } from "@nextui-org/react";
 import DB from "../models/db";
 import useLiveQuery from "../utility/hooks/useLiveQuery";
 
@@ -20,21 +20,24 @@ const Home: NextPage = () => {
         {files
           ? files.map((file) => (
               <Card key={file.id} style={{ marginBottom: "10px" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <span>{file.name.split(".json")[0]}</span>
-                  <time
-                    dateTime={file.uploadedAt.toISOString()}
-                    style={{ display: "inline", color: "grey" }}
+                <Link href={`/${file.id}/parse`}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      width: "100%",
+                    }}
                   >
-                    {file.uploadedAt.toLocaleString()}
-                  </time>
-                </div>
+                    <span>{file.name.split(".json")[0]}</span>
+                    <time
+                      dateTime={file.uploadedAt.toISOString()}
+                      style={{ display: "inline", color: "grey" }}
+                    >
+                      {file.uploadedAt.toLocaleString()}
+                    </time>
+                  </div>
+                </Link>
               </Card>
             ))
           : "loading files..."}
