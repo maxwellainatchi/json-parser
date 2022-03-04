@@ -2,7 +2,6 @@ import * as mtt from "maketypes/lib/types";
 import JSONValue from "../utility/jsonValue";
 import { BaseShape as _BaseShape, d2s } from "maketypes/lib/types";
 import { Emitter, NopWriter } from "maketypes/lib/index";
-import { string } from "prop-types";
 
 export enum Type {
   bottom,
@@ -28,23 +27,53 @@ let mttToType: Record<mtt.BaseShape, Type> = {
 
 const emptyEmitter = new Emitter(new NopWriter(), new NopWriter());
 
-export abstract class Shape<T extends mtt.Shape = mtt.Shape> {
-  public static _construct<T extends Shape>(shape: mtt.Shape): T {
-    let type = mttToType[shape.type];
-    let S = {
-      [Type.bottom]: undefined,
-      [Type.null]: NullShape,
-      [Type.record]: RecordShape,
-      [Type.string]: StringShape,
-      [Type.boolean]: BooleanShape,
-      [Type.number]: NumberShape,
-      [Type.collection]: CollectionShape,
-      [Type.any]: AnyShape,
-    }[type];
-    if (!S) {
-      throw new Error("Invalid base type " + type);
+export interface ShapeFields {
+  type: Type;
+}
+
+interface ShapeWithName {
+  name: string;
+  shape: Shape;
+}
+
+export abstract class Shape implements ShapeFields {
+  public static hydrate(object: ShapeFields): Shape {
+    switch (object.type) {
+      case Type.record:
+        return RecordShape.hydrate(object as RecordShapeFields);
+      case Type.collection:
+        return CollectionShape.hydrate(object as CollectionShapeFields);
+      default:
+        return new PrimitiveShape(object.type);
     }
-    return new S(shape as any) as any;
+  }
+
+  protected static _construct(shape: mtt.Shape): Shape {
+    let type = mttToType[shape.type];
+    switch (type) {
+      case Type.bottom:
+        throw new Error("Invalid base type " + type);
+      case Type.record:
+        let recordShape = shape as mtt.CRecordShape;
+        let fields = new Map<string, Shape>();
+        recordShape.forEachField((field, name) => {
+          let shape = Shape._construct(field);
+          fields.set(name, shape);
+        });
+        return new RecordShape(type, fields);
+      case Type.collection:
+        let collectionShape = shape as mtt.CCollectionShape;
+        return new CollectionShape(
+          type,
+          Shape._construct(collectionShape.baseShape)
+        );
+      default:
+        return new PrimitiveShape(type);
+    }
+  }
+
+  public static parse<T extends mtt.Shape>(json: JSONValue): Shape {
+    return this._construct(d2s(emptyEmitter, json));
   }
 
   public static typeToName: Record<_BaseShape, string> = {
@@ -58,44 +87,67 @@ export abstract class Shape<T extends mtt.Shape = mtt.Shape> {
     [Type.any]: "any",
   };
 
-  public static parse<T extends mtt.Shape>(json: JSONValue): Shape<T> {
-    let _shape = d2s(emptyEmitter, json);
-    return this._construct(_shape);
+  public get typeName(): string {
+    return Shape.typeToName[this.type];
   }
 
-  public _shape: T;
-  public get type(): Type {
-    return mttToType[this._shape.type];
+  public constructor(public type: Type) {}
+
+  abstract recursiveFields(baseName?: string): ShapeWithName[];
+}
+
+export interface RecordShapeFields extends ShapeFields {
+  fields: Map<string, ShapeFields>;
+}
+
+export class RecordShape extends Shape implements RecordShapeFields {
+  public static override hydrate(object: RecordShapeFields): RecordShape {
+    return new RecordShape(
+      object.type,
+      new Map(
+        [...object.fields].map(([name, field]) => [name, Shape.hydrate(field)])
+      )
+    );
   }
 
-  public constructor(shape: T) {
-    this._shape = shape;
+  constructor(type: Type, public fields: Map<string, Shape>) {
+    super(type);
+  }
+
+  public override recursiveFields(baseName?: string): ShapeWithName[] {
+    return [...this.fields].flatMap(([name, field]) =>
+      field.recursiveFields(`${baseName ?? ""}.${name}`)
+    );
   }
 }
 
-export class RecordShape extends Shape<mtt.CRecordShape> {
-  public fields = new Map<string, Shape>();
-
-  constructor(_shape: mtt.CRecordShape) {
-    super(_shape);
-
-    this._shape.forEachField((field, name) => {
-      let shape = RecordShape._construct(field);
-      this.fields.set(name, shape);
-    });
-  }
-}
-export class CollectionShape extends Shape<mtt.CCollectionShape> {
-  public derivedShape: Shape;
-
-  constructor(_shape: mtt.CCollectionShape) {
-    super(_shape);
-    this.derivedShape = Shape._construct(_shape.baseShape);
-  }
+export interface CollectionShapeFields extends ShapeFields {
+  derivedShape: ShapeFields;
 }
 
-export class BooleanShape extends Shape<mtt.CBooleanShape> {}
-export class StringShape extends Shape<mtt.CStringShape> {}
-export class NumberShape extends Shape<mtt.CNumberShape> {}
-export class NullShape extends Shape<mtt.CNullShape> {}
-export class AnyShape extends Shape<mtt.CAnyShape> {}
+export class CollectionShape extends Shape implements CollectionShapeFields {
+  public static override hydrate(
+    object: CollectionShapeFields
+  ): CollectionShape {
+    return new CollectionShape(object.type, Shape.hydrate(object.derivedShape));
+  }
+
+  constructor(type: Type, public derivedShape: Shape) {
+    super(type);
+  }
+
+  public override recursiveFields(baseName?: string): ShapeWithName[] {
+    return this.derivedShape.recursiveFields(`${baseName ?? ""}[]`);
+  }
+}
+
+export class PrimitiveShape extends Shape {
+  public override recursiveFields(baseName?: string): ShapeWithName[] {
+    return [
+      {
+        name: baseName ?? "",
+        shape: this,
+      },
+    ];
+  }
+}
