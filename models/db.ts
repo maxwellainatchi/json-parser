@@ -3,6 +3,7 @@ import Dexie, { Table } from "dexie";
 export interface JSONFile {
   id?: number;
   name: string;
+  uploadedAt: Date;
   content: string;
 }
 

@@ -7,14 +7,14 @@ const FileInput: React.FC<
     onFileSelect?: (files: FileList | null) => void;
     clearOnSelect?: boolean;
   }
-> = ({ onFileSelect, clearOnSelect = false, className, ...rest }) => {
+> = ({ onFileSelect, clearOnSelect = false, style, className, ...rest }) => {
   let [files, setFiles] = useState<FileList | null>(null);
   return (
-    <label className={styles.file}>
+    <label className={classNames([className, styles.file])} style={style}>
       <input
         {...rest}
         type="file"
-        className={classNames([className, styles.display])}
+        className={styles.display}
         onChange={(e) => {
           if (!clearOnSelect) {
             setFiles(e.target.files);
