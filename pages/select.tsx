@@ -8,6 +8,7 @@ import {
   Container,
   Divider,
   Input,
+  Link,
   Spacer,
   Text,
 } from "@nextui-org/react";
@@ -15,8 +16,11 @@ import DB from "../models/db";
 import Application from "../models/Application";
 import { Shape } from "../models/Shape";
 import { useRouter } from "next/router";
+import useLiveQuery from "../utility/hooks/useLiveQuery";
 
 const Home: NextPage = () => {
+  const applications = useLiveQuery(() => Application.list());
+
   const [file, setFile] = useState<File | undefined>();
   const [name, setName] = useState("");
   const router = useRouter();
@@ -52,11 +56,27 @@ const Home: NextPage = () => {
           await router.push(`/${application.id}/parse`);
         }}
       >
-        <Card.Header>
-          <Text h1>New Application</Text>
-        </Card.Header>
-        <Divider />
         <Card.Body>
+          {applications?.length ? (
+            <div>
+              <Text h2>Select an existing application</Text>
+              <Spacer />
+              {applications.map((application) => (
+                <Card key={application.id}>
+                  <Link href={`${application.id}/parse`}>
+                    <Text h4>{application.name}</Text>
+                  </Link>
+                </Card>
+              ))}
+            </div>
+          ) : applications ? null : (
+            "loading.."
+          )}
+          {!applications || (applications.length > 0 && <Spacer />)}
+          <Divider />
+          <Spacer />
+          <Text h2>New Application</Text>
+          <Spacer />
           <Input
             placeholder={"Application name"}
             required
