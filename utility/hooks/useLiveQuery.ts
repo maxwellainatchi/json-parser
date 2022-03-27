@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLiveQuery as _useLiveQuery } from "dexie-react-hooks";
 
-const useLiveQuery = <T extends object | undefined>(
+const useLiveQuery = <T extends object | undefined | null>(
   query: () => T | Promise<T>,
   deps?: any[]
 ): T | undefined => {

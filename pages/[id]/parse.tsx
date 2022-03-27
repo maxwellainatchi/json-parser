@@ -18,7 +18,7 @@ const ParsePage: NextPage = () => {
   const id = (idString && parseInt(idString)) ?? undefined;
 
   const application = useLiveQuery(
-    () => (id ? Application.fetch(id) : undefined),
+    () => (id ? Application.fetch(id).then((a) => a ?? null) : undefined),
     [id]
   );
 
@@ -53,8 +53,10 @@ const ParsePage: NextPage = () => {
             {/*  "loading..."*/}
             {/*)}*/}
           </div>
-        ) : (
+        ) : application === undefined ? (
           "loading..."
+        ) : (
+          "No such application."
         )}
       </Card>
     </Container>
